@@ -1,49 +1,49 @@
 {
-  "totalWords": 4750002,
-  "uniqueWords": 19,
+  "totalWords": 3000000,
+  "uniqueWords": 14,
   "longestWord": "consectetur",
-  "shortestWord": "g",
+  "shortestWord": "lorem",
   "topWords": [
     {
+      "word": "lorem",
+      "count": 250000
+    },
+    {
       "word": "ipsum",
-      "count": 187500
+      "count": 250000
     },
     {
       "word": "dolor",
-      "count": 187500
+      "count": 250000
     },
     {
-      "word": "sit",
-      "count": 187500
-    },
-    {
-      "word": "elit",
-      "count": 187500
-    },
-    {
-      "word": "sed",
-      "count": 187500
-    },
-    {
-      "word": "do",
-      "count": 187500
+      "word": "consectetur",
+      "count": 250000
     },
     {
       "word": "eiusmod",
-      "count": 125001
+      "count": 250000
     },
     {
-      "word": "ut",
-      "count": 125001
+      "word": "tempor",
+      "count": 250000
     },
     {
       "word": "labore",
-      "count": 125001
+      "count": 250000
     },
     {
-      "word": "et",
-      "count": 125001
+      "word": "dolore",
+      "count": 250000
+    },
+    {
+      "word": "magna",
+      "count": 250000
+    },
+    {
+      "word": "aliqua",
+      "count": 250000
     }
   ],
-  "timeTaken": 454
+  "timeTaken": 416
 }
