@@ -2,12 +2,24 @@ const fs = require("fs");
 const path = require("path");
 const { Worker } = require("worker_threads");
 
-const FILE = "corpus.txt";   // input file
-const WORKERS = 4;           // number of workers to use
-const TOP_N = 10;            // top N frequent words
-const OUT = "output/stats.json"; // where to save final stats
+const args = process.argv.slice(2); // get args after "node wordstat.js"
 
-// splitting text into equal chunks 
+function getArg(flag, defaultValue = null) {
+  const index = args.indexOf(flag);
+  if (index !== -1 && index + 1 < args.length) {
+    return args[index + 1];
+  }
+  return defaultValue;
+}
+
+const FILE = getArg("--file", "corpus.txt");
+const TOP_N = parseInt(getArg("--top", "10"));
+const MIN_LEN = parseInt(getArg("--minLen", "1"));
+const UNIQUE = args.includes("--unique");
+const WORKERS = parseInt(getArg("--workers", "4"));
+const OUT = "output/stats.json";
+
+// split text into equal parts
 function splitText(text, numParts) {
   const size = Math.ceil(text.length / numParts);
   const parts = [];
@@ -17,18 +29,18 @@ function splitText(text, numParts) {
   return parts;
 }
 
-// Running  one worker and return its result
-function runWorker(chunk, topN) {
+// run a worker thread
+function runWorker(chunk, topN, minLen) {
   return new Promise((resolve, reject) => {
     const worker = new Worker(path.join(__dirname, "worker.js"), {
-      workerData: { text: chunk, topN },
+      workerData: { text: chunk, topN, minLen },
     });
     worker.on("message", resolve);
     worker.on("error", reject);
   });
 }
 
-// Combine results from all workers
+// merge results from workers
 function mergeResults(results) {
   const totalCounts = {};
   let totalWords = 0;
@@ -37,10 +49,7 @@ function mergeResults(results) {
 
   for (const res of results) {
     totalWords += res.totalWords;
-    for (const [word, count] of Object.entries(res.topWords.reduce((acc, w) => {
-      acc[w.word] = (acc[w.word] || 0) + w.count;
-      return acc;
-    }, {}))) {
+    for (const [word, count] of Object.entries(res.counts)) {
       totalCounts[word] = (totalCounts[word] || 0) + count;
     }
 
@@ -49,7 +58,10 @@ function mergeResults(results) {
       shortestWord = res.shortestWord;
   }
 
-  const topWords = Object.entries(totalCounts)
+  // filter words by min length
+  const filteredEntries = Object.entries(totalCounts).filter(([word]) => word.length >= MIN_LEN);
+
+  const topWords = filteredEntries
     .sort((a, b) => b[1] - a[1])
     .slice(0, TOP_N)
     .map(([word, count]) => ({ word, count }));
@@ -59,21 +71,21 @@ function mergeResults(results) {
     uniqueWords: Object.keys(totalCounts).length,
     longestWord,
     shortestWord,
-    topWords,
+    topWords: UNIQUE ? topWords.map((t) => t.word) : topWords,
   };
 }
 
-// Main function
 async function main() {
-  console.log("Reading file...");
+  console.log(`Reading file: ${FILE}`);
   const text = fs.readFileSync(FILE, "utf8");
 
-  console.log(` Splitting into ${WORKERS} chunks...`);
+  console.log(`Splitting into ${WORKERS} chunks...`);
   const chunks = splitText(text, WORKERS);
 
-  console.log(` Starting ${WORKERS} workers...`);
+  console.log(`tarting ${WORKERS} workers...`);
   const start = Date.now();
-  const results = await Promise.all(chunks.map((chunk) => runWorker(chunk, TOP_N)));
+
+  const results = await Promise.all(chunks.map((chunk) => runWorker(chunk, TOP_N, MIN_LEN)));
 
   const finalStats = mergeResults(results);
   const timeTaken = Date.now() - start;
@@ -82,9 +94,7 @@ async function main() {
   fs.writeFileSync(OUT, JSON.stringify({ ...finalStats, timeTaken }, null, 2));
 
   console.log(`Done in ${timeTaken} ms`);
-  console.log("Results saved to:", OUT);
-  console.log(finalStats);
+  console.log(`Results saved to: ${OUT}`);
+  console.table(finalStats.topWords);
 }
-
-// Run main
 main().catch(console.error);
